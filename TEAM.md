@@ -1,6 +1,6 @@
 # Team
 
-Blackboard team:
+Blackboard team: 4
 
 One row per member. Write each GitHub username with an `@` in front of it, for
 example `@octocat`: `tools/check.py` reads the usernames from this table.
