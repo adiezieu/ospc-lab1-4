@@ -1,0 +1,5 @@
+# Everything the pipeline writes. Results you want to keep go in members/ or results/.
+out/
+__pycache__/
+*.npy
+*.part

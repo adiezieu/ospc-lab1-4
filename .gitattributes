@@ -1,0 +1,5 @@
+# Unix line endings for every text file, also on Windows: bash cannot run a
+# script with Windows line endings.
+* text=auto eol=lf
+*.png binary
+*.pdf binary
