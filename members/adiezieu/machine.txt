@@ -1,0 +1,10 @@
+github_user: adiezieu
+laptop: MacBook Pro M3, macOS
+date: 2026-10-27 10:34 UTC
+cpus_in_container: 8
+architecture: aarch64
+cpu: Apple - 
+kernel: 6.11.11-linuxkit
+docker_memory_kb: 8025572
+container_memory_limit: 2147483648
+container_swap_limit: 0

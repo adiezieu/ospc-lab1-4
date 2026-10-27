@@ -1,0 +1,10 @@
+github_user: MasihGhadbeygi
+laptop: Apple MacBook Air 15-inch M2 2023, macOS Tahoe 26.3.1
+date: 2026-10-27 10:29 UTC
+cpus_in_container: 8
+architecture: aarch64
+cpu: Apple - 
+kernel: 7.0.12-linuxkit
+docker_memory_kb: 6064496
+container_memory_limit: 2147483648
+container_swap_limit: 0
