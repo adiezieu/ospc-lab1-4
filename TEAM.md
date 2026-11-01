@@ -20,5 +20,5 @@ Where to find each detail (Section 3 of the handout has the same table):
 | Iñigo González del Rey | @igonzalezdel | Dell Inspiron 16 7640 2-in-1, Windows 11 Home | Intel Core Ultra 7 155H; 16 cores, 22 threads | 22 |
 | Masih Ghadbeygi | @MasihGhadbeygi | Apple MacBook Air 15-inch M2 (2023), macOS Tahoe 26.3.1 | Apple M2; 8 cores, 8 threads | 8 |
 | Antoni Gendra Fernández | @agendraieu2024 | Apple MacBook Air 15-inch M2 (2023), macOS 26.6.2 | Apple M2; 8 cores, 8 threads | 8 |
-| Ander Díez Zarraga | @adiezieu | MacBook Pro M3, macOS version not provided | Apple M3; cores and threads to confirm | 8 |
+| Ander Díez Zarraga | @adiezieu | MacBook Pro M3, macOS 15.1 | Apple M3; 8 cores, 8 threads	8 | 8 |
 | Helen Zhang | @hzhangieu2024-hue | MacBook Air (Model Identifier: MacBookAir10,1), macOS Tahoe 26.6.2 | Apple M1; 8 cores, 8 threads | 8 |
