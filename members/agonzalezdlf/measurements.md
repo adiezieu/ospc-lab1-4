@@ -38,6 +38,22 @@ The original program retains monthly DataFrame copies while keeping the original
 All three smaller runs completed successfully (`report: done`).
 
 Peak memory and elapsed time increased with dataset size. The reported peak memory in MiB was calculated by dividing the KB measurement by 1,024.
+### Pipeline and tee diagnostic
+
+Command:
+`python3 steps/report.py | tee /tmp/report.log`
+
+Observed result:
+`pipeline=0 stages=137 0`
+
+The log file was empty.
+
+- Python exited with status 137 (SIGKILL).
+- tee exited successfully with status 0.
+- Bash reported pipeline status 0 because tee was the last command.
+- The missing log message is consistent with Python's stdout remaining buffered when the process was killed.
+
+This shows that a pipeline can report success even when an earlier command has failed.
 
 ### After the fix
 
