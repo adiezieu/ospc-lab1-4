@@ -15,10 +15,9 @@ print(f"report: loaded {len(orders):,} orders ({size:.0f} MiB)")
 orders["order_date"] = pd.to_datetime(orders["order_date"])
 orders["revenue"] = orders["quantity"] * orders["unit_price"]
 
-# The monthly tables first, then the whole year
-months = [orders[orders["order_date"].dt.month == m] for m in range(1, 13)]
-year = pd.concat(months)
+# Calculate monthly revenue directly without creating separate monthly tables
+month = orders["order_date"].dt.month  # Extract each order's month (1–12)
+table = orders.groupby(["region", month])["revenue"].sum().unstack()  # Sum revenue by region and month
 
-table = year.groupby(["region", year["order_date"].dt.month])["revenue"].sum().unstack()
 table.round(2).to_csv(os.path.join(OUT, "revenue_by_region_month.csv"))
 print("report: done")
