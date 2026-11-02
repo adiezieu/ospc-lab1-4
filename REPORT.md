@@ -11,11 +11,16 @@ not whole screens.
 
 ## Task 1: Generating the report… again
 
-- Symptom:
-- Commands and recordings you used, why you chose them, and what they showed:
-- Cause:
-- Fix:
-- Before and after (your measurements):
+- Symptom: The original report.py was killed when processing the full dataset of 8,400,000 orders. It printed a DataFrame size of 887 MiB before exiting with status 137 (SIGKILL). The container had a memory limit of 2 GiB.
+- Commands and recordings you used, why you chose them, and what they showed: I checked memory.max to confirm the container's memory limit and inspected memory.events to understand why the process was killed. The oom and oom_kill counters initially showed 3 and later increased to 4. Since these are cumulative counters, this indicates one additional OOM event and one additional process killed between observations, not four kills during one execution. I then used /usr/bin/time to test smaller datasets and see how memory consumption increased. Peak memory was 508,256 KB for 1M orders, 854,300 KB for 2M and 1,568,212 KB for 4M. I also tested `python3 steps/report.py | tee /tmp/report.log` and checked PIPESTATUS. The pipeline returned 0 even though Python exited with status 137, because tee was the last command and succeeded.
+- Cause: The original code kept the full DataFrame in memory while creating 12 separate monthly DataFrames and then combining them using pd.concat(). These additional copies increased memory consumption until the process exceeded the container's 2 GiB limit.
+- Fix: I changed the approach to calculate monthly revenue directly from the original DataFrame, extracting the month from order_date and using groupby() to aggregate revenue by region and month. This avoided creating and concatenating separate monthly DataFrames, reducing memory usage.
+- Before and after (my measurements):
+  - Before: The original program was killed with exit status 137 and could not complete the full dataset.
+  - After: The fixed version successfully processed all 8,400,000 orders in 14.48 s elapsed (10.49 s user, 3.52 s system), with 1,859,828 KB peak memory (approximately 1,816 MiB).
+  - python3 tools/check.py: PASS revenue_by_region_month.csv.
+
+The main improvement was that the report could now complete within the memory limit while producing the expected output.
 
 ## Task 2: Extracting data
 
