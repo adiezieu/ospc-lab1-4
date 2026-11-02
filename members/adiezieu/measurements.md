@@ -33,8 +33,6 @@
 | cProfile Sample |0.24 |0.83 |0.02 |148780 KB peak memory |
 * Profiling `segments.py` with `cProfile` revealed that row-by-row iteration (`itertuples`) and per-record string parsing (`strptime`) accounted for over 55% of CPU time; replacing row operations with vectorized Pandas/NumPy expressions reduced the full dataset runtime to just 6.26 seconds.
 
-## Task 5: Computing the Statistics
-
 ## Task 5: stats.sh
 
 * `./run_report.sh` printed `stats: done with 16 workers on a container with 8 CPUs.`
