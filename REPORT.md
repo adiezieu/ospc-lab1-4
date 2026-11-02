@@ -57,7 +57,7 @@ The main improvement was that the report could now complete within the memory li
 - Symptom: segments.py took 44.00 s on the full file (44.02s user, 0.58s system, 750,648 KB peak). Much longer than just reading the file 
 - Diagnosis: the system time is tiny, the problem is not in the kernel. The time goes into the Python code running for every row. cProfile (100,000 rows) shows 3.6 million function calls, including 100,000 calls of segment() and of datetime.strptime. On the full file, it is 8.4 million calls of each. 
 - Commands and recordings you used, why you chose them, and what they showed:
-I used '/usr/bin/time -f "$T" python3 steps/segments.py' to measure the symton and whether the time problem was on user or system time. It gave 44s elapsed, 44.02 user ad 0.58s system. Almost all the time is on user time. 
+I used '/usr/bin/time -f "$T" python3 steps/segments.py' to measure the sympton and whether the time problem was on user or system time. It gave 44s elapsed, 44.02 user ad 0.58s system. Almost all the time is on user time. 
 Then used 'DATA=~/data/sales_2025_sample.csv /usr/bin/time ...' to make a quick measurement on 100,000 orders, to compare the before and after. It gave 0.89s elapsed, 1.37s user, 0.10s system.
 'python 3 -m cProfile -s tottime steps/segment.py' To find which functions take more time.
 I used cat steps/segments.py to find the line behind those calls. The loop 'for order in orders.itertuples()' calls segment(), which calls datetime.strptime for every order
