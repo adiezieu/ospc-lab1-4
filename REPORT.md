@@ -27,11 +27,22 @@ not whole screens.
 
 ## Task 3: Auditing
 
-- Symptom:
-- Commands and recordings you used, why you chose them, and what they showed:
-- Cause:
-- Fix:
-- Before and after (your measurements):
+- Symptom: audit.py wrote the correct file (8,400,000 lines) but it was slow. On the full file it took 54.71 s, and 15.55 s of that was system time, so about 28% of the CPU time was spent in the kernel instead of in our code.
+
+- Commands and recordings you used, why you chose them, and what they showed: First I used `/usr/bin/time -f "$T" python3 steps/audit.py` to see user vs system time. The system time was very high, which pointed to system calls. Then I used `strace -c -e trace=openat,write,close python3 steps/audit.py` on the sample (100,000 orders) to count them. It showed 100,686 openat, 100,001 write and 100,673 close, so basically one open, one write and one close for every order.
+
+- Cause: the loop opened the file, wrote one line and closed it again for every single order (`with open(path, "a")` was inside the `for` loop). That is 3 system calls per order, and Python's buffer was emptied after every line, so it was never used. The comment said this makes sure each line is saved on disk, but that is not true. close() only gives the data to the kernel's page cache, and the kernel writes it to disk later. Only fsync() forces it to disk.
+- Fix: I moved the open() outside the loop, so the file is opened once at the start and closed once at the end. Now Python fills its 128 KiB buffer and writes big blocks instead of one line at a time. Commit: "Fix task 3: open audit file once instead of per order".
+
+- Before and after (your measurements): measured on my MacBook Air M2 (8 CPUs in the container).
+  - Sample, system calls: openat 100,686 → 686, write 100,001 → 17, close 100,673 → 673
+  - Sample, time: 0.89 s → 0.42 s elapsed, 0.22 s → 0.08 s system
+  - Full file: 54.71 s → 11.79 s elapsed, 39.75 s → 11.96 s user, 15.55 s → 0.43 s system
+  - Kernel share: about 28% → about 3.5%
+  - Peak memory stayed the same (about 634,000 KB)
+  - The ~686 openat and ~673 close left are from Python starting up and loading its modules, not from our file. 17 writes makes sense because the output is about 2.1 MB and 2.1 MB / 128 KiB ≈ 17. For the full file (about 180 MB) that is around 1,400 writes instead of 8.4 million.
+
+  - check.py: PASS audit_2025.csv 8,400,000 lines
 
 ## Task 4: Segmenting the orders
 
