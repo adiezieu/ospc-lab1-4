@@ -24,9 +24,10 @@ I ran the original report on the full dataset of 8,400,000 orders.
 - Result: `Killed`.
 - Exit status: `137` (SIGKILL).
 - Container memory limit: 2 GiB.
-- `memory.events`: `oom=3`, `oom_kill=3`, `oom_group_kill=0`.
+- Initial `memory.events` reading: `oom=3`, `oom_kill=3`, `oom_group_kill=0`.
+- A later reading showed `oom=4` and `oom_kill=4`.
 
-The OOM counters were a cumulative snapshot, not a before/after comparison.
+The counters increased by 1 between observations. Since they are cumulative, this indicates one additional OOM event and one additional process killed during that interval, not four kills in a single run. The readings were not recorded as an immediate before/after comparison of an isolated execution.
 
 The problem was that the original code kept the full DataFrame in memory while creating separate monthly DataFrames. These additional copies increased memory consumption until the process exceeded the container's limit.
 
