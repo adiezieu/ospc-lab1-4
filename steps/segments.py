@@ -1,4 +1,5 @@
 """Number of orders per region, quarter and order size (segments.csv)."""
+# GenAI note: this fix was done with the advice of Claude (Anthropic). Prompt: 'here is segments.py and its cProfile output, find where the time goes and fix it'.
 
 import os
 
