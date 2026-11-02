@@ -34,3 +34,21 @@
 * Profiling `segments.py` with `cProfile` revealed that row-by-row iteration (`itertuples`) and per-record string parsing (`strptime`) accounted for over 55% of CPU time; replacing row operations with vectorized Pandas/NumPy expressions reduced the full dataset runtime to just 6.26 seconds.
 
 ## Task 5: Computing the Statistics
+
+## Task 5: stats.sh
+
+* `./run_report.sh` printed `stats: done with 16 workers on a container with 8 CPUs.`
+
+Sweep (`members/adiezieu/sweep.csv`), median elapsed of 3 runs:
+
+| Workers | 1 | 2 | 4 | 8 | 16 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Elapsed (s)** | 29.22 | 15.02 | 8.08 | 6.92 | 7.66 |
+
+* Time halves from 1 to 2 to 4 workers (linear scaling with physical cores), flattens at 8 cores, and gets slower at 16 workers.
+* User CPU time increases significantly with more workers (from ~29 s with 1 worker to >55 s with 16 workers) due to OS scheduling overhead and context switching.
+
+Ctrl-C test (`bash steps/stats.sh`, Ctrl-C a few seconds after `stats: input ready`):
+
+* `echo $?` printed 130 (128 + 2, SIGINT).
+* `ps -ef | grep stats_worker` confirmed no lingering worker processes were left running.
