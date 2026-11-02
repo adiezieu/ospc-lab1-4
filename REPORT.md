@@ -64,7 +64,7 @@ I used cat steps/segments.py to find the line behind those calls. The loop 'for 
 'cp ~/data/out/segments.csv /tmp/segments_before.csv', then used 'diff' after the fix to prove that the fix does not change the result. diff printed nothing and my script printed IDENTICAL
 I used 'python3 tools/check.py' to check the reference values. PASS for segments.csv
 - Cause: a Python loop calls segment() once per order, and each call parses the date text with strptime, which is slow. 
-- Fix: to fix it, we work on the whole columns instead of one time at a time: using pd.to_datetime(...).dt.quarter, np.select for the size, groupby to count. The file is read in chunks of 1 million rows, so memory stays low (container is limited to 2GiB). 
+- Fix: to fix it, we work on the whole columns instead of one time at a time: using pd.to_datetime(...).dt.quarter, np.select for the size, groupby to count. The file is read in chunks of 1 million rows, so memory stays low. 
 - Before and after (your measurements):
 
 | | Before | After |
