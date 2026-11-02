@@ -49,11 +49,27 @@ not whole screens.
 
 ## Task 4: Segmenting the orders
 
-- Symptom:
+- Symptom: segments.py took 44.00 s on the full file (44.02s user, 0.58s system, 750,648 KB peak). Much longer than just reading the file 
+- Diagnosis: the system time is tiny, the problem is not in the kernel. The time goes into the Python code running for every row. cProfile (100,000 rows) shows 3.6 million function calls, including 100,000 calls of segment() and of datetime.strptime. On the full file, it is 8.4 million calls of each. 
 - Commands and recordings you used, why you chose them, and what they showed:
-- Cause:
-- Fix:
+I used '/usr/bin/time -f "$T" python3 steps/segments.py' to measure the symton and whether the time problem was on user or system time. It gave 44s elapsed, 44.02 user ad 0.58s system. Almost all the time is on user time 
+Then used 'DATA=~/data/sales_2025_sample.csv /usr/bin/time ...' to make a quick measurement on 100,000 orders, to compare the before and after. It gave 0.89s elapsed, 1.37s user, 0.10s system
+'python 3 -m cProfile -s tottime steps/segment.py' To find which functions take more time
+I used cat steps/segments.py to find the line behind those calls. The loop 'for order in orders.itertuples()' calls segment(), which calls datetime.strptime for every order
+'cp ~/data/out/segments.csv /tmp/segments_before.csv', then used 'diff' after the fix to prove that the fix does not change the result. diff printed nothing and my script printed IDENTICAL
+I used 'python3 tools/check.py' to check the reference values. PASS for segments.csv
+- Cause: a Python loop calls segment() once per order, and each call parses the date text with strptime, which is slow. 
+- Fix: to fix it, we work on the whole columns instead of one time at a time: using pd.to_datetime(...).dt.quarter, np.select for the size, groupby to count. The file is read in chunks of 1 million rows, so memory stays low (container is limited to 2GiB). 
 - Before and after (your measurements):
+
+| | Before | After |
+|---|---|---|
+| Elapsed | 44.00 s | 8.90 s |
+| User | 44.02 s | 8.77 s |
+| System | 0.58 s | 0.74 s |
+| Peak memory | 750,648 KB | 443,280 KB |
+
+
 
 ## Task 5: Computing the statistics
 
@@ -90,3 +106,5 @@ used in this assignment."
 
 - Task 3 (MasihGhadbeygi): I used Claude (Anthropic) to guide me through the lab setup and the Task 3 diagnosis, to explain the strace and time outputs, and to write the fixed version of steps/audit.py (open the file once before the loop). Prompts were along the lines of 'walk me through Task 3 of Lab 1 step by step'. I ran all the commands and measurements myself on my laptop, and I checked the fix with tools/check.py, having a complete understanding of the Task. 
 - Warm-up, Task 2 and Task 5 (agendraieu2024): I used Claude (Anthropic) as a tutor and assistant. It explained the outputs of `time`, `strace`, `ps` and `PIPESTATUS` to me, helped me with the diagnosis, helped me write and check the code of the fixed steps/extracts.sh and steps/stats.sh (the code is marked with a GenAI comment), and helped me write up these three sections of REPORT.md. Prompts were along the lines of 'help me fix Task 2 of Lab 1, extracts.sh writes empty files' and 'help me fix Task 5 of Lab 1, stats.sh uses too many workers and leaves them running after Ctrl-C'. I ran all the commands and measurements myself on my laptop, decided which fixes to apply after understanding each fault, tested them with tools/check.py and with the failure and Ctrl-C tests described above, and reviewed the text of the report.
+- Warm-up, measurements, Task 4 (hzhangieu2024-hue): I used Claude (Anthropic) as a tutor and assistant. It help me fix some terminal setup problems I had, recover the original scripts from the git history (because was giving different results), and explain the outputs of 'time', 'strace', 'memory.events' and cProfile. Helped me diagnose Task 4 from the profile and assisted in writing the fixed version of steps/segment.py (The code is marked with a GenAI comment), and draft Task 4 section of REPORT.md and my measurements.md. Prompts were along the lines of 'help me complete measurements.md and the sweep', 'help me understand task 4 results and interpretation'. I ran all the commands and measurements myself on my laptop, checked the fix with diff against the original output and with tools/check.py. I understand the fault, its cause and the fix  
+
