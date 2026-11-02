@@ -6,8 +6,8 @@ not whole screens.
 
 ## Warm-up: Generating the report
 
-- What happened, and why:
-- Your fix, and how it reached your teammates:
+- What happened, and why: `./run_report.sh` failed with `bash: ./run_report.sh: /bin/bash: bad interpreter: Permission denied`. The message is misleading: /bin/bash is fine. `ls -l run_report.sh` showed `-rw-r--r--`, so the script had no execute permission (x) for owner, group or others, and `./script` needs it. `bash run_report.sh` works because then bash only has to read the file, which needs just the read permission.
+- Your fix, and how it reached your teammates: `chmod +x run_report.sh` (`ls -l` then shows `-rwxr-xr-x`), then commit and push. Alexandra's commit (63ea488) reached the rest of us with `git pull`, because git stores the execute bit as part of the file mode. On Windows the bit has to be set with `git update-index --chmod=+x run_report.sh`. A later `git pull --rebase` complained about unstaged changes only because my local copy had a mode change on this file; `git checkout -- run_report.sh` removed it.
 
 ## Task 1: Generating the report… again
 
@@ -19,11 +19,14 @@ not whole screens.
 
 ## Task 2: Extracting data
 
-- Symptom:
-- Commands and recordings you used, why you chose them, and what they showed:
-- Cause:
-- Fix:
-- Before and after (your measurements):
+- Symptom: `bash steps/extracts.sh` printed `extracts: done` and ended with exit status 0, but the six files in `~/data/out/extracts/` (Iberia, DACH, France, Italy, Benelux, Nordics) were all 0 bytes. The report looked successful and the regional managers would have received empty files.
+- Commands and recordings you used, why you chose them, and what they showed: First `ls -l ~/data/out/extracts` to check the result: six files of 0 bytes. Then I ran the pipeline of the loop by hand and printed `echo ${PIPESTATUS[@]}`, because `$?` of a pipeline is only the status of its last command (`cut`). It showed `2 0 0`: grep failed with status 2, but cut and the redirection succeeded. The error message was `grep: ../data/sales_2025.csv: No such file or directory`. I read `help set` to check what `set -e` and `pipefail` would change.
+- Cause: Two things combined. (1) The script does `cd` into `$OUT/extracts` and then reads `../data/sales_2025.csv`, a relative path. From that folder it points to `~/data/out/data/sales_2025.csv`, which does not exist (the real file is `~/data/sales_2025.csv`). (2) The grep error was thrown away with `2>/dev/null`, and the script had no `set -e` / `pipefail`, so the failed grep was hidden: the exit status of the pipeline was the one of `cut`, which is 0. The `>` redirection had already created the empty files.
+- Fix: Removed the `cd` and used the absolute paths `$DATA` and `$OUT`, removed `2>/dev/null` so errors are visible, and added `set -euo pipefail` so the script stops and fails if any command of a pipeline fails. Commit a4f561a: "Fix task 2: extracts.sh reads the right file and stops on errors".
+- Before and after (your measurements): 
+  - Before: exit status 0, six files of 0 bytes, `PIPESTATUS` = `2 0 0`.
+  - After: `bash steps/extracts.sh` takes 8.82 s (6.30 s user, 6.38 s system; user + system is larger than elapsed because the commands of each pipeline run in parallel). The six files have 29 to 76 MB, for example Iberia has 2,183,057 lines, and `python3 tools/check.py` shows PASS for them.
+  - Failure test: with `DATA=/nonexistent bash steps/extracts.sh` the script now stops with grep's error and exit status 2 instead of printing `done`. It also works when started from another folder (`cd ~` first), since it no longer depends on the current directory.
 
 ## Task 3: Auditing
 
@@ -54,11 +57,16 @@ not whole screens.
 
 ## Task 5: Computing the statistics
 
-- Symptom:
-- Commands and recordings you used, why you chose them, and what they showed:
-- Cause:
-- Fix:
-- Before and after (your measurements):
+- Symptom: Two problems. (1) `stats.sh` started 16 workers by default on a container with 8 CPUs (`nproc` = 8). (2) When I pressed Ctrl-C during the run, the script ended (exit status 130 = 128 + SIGINT) but the workers kept running: `ps -ef | grep stats_worker` showed 14 `stats_worker.py` processes with parent PID 1, still using the CPUs after the script was gone.
+- Commands and recordings you used, why you chose them, and what they showed: `/usr/bin/time -f "$T" bash steps/stats.sh` for elapsed, user and system time, and `tools/sweep.sh` to repeat the run with 1, 2, 4, 8, 16... workers (result in `members/agendraieu2024/sweep.csv`). With more workers than CPUs the elapsed time stopped improving and user time grew, because the workers only compete for the same cores. For the Ctrl-C problem I ran the script, pressed Ctrl-C and looked at `ps -ef | grep stats_worker` right away (PPID 1 means the original parent died and init adopted the process); `pkill -f stats_worker` cleaned up afterwards.
+- Cause: (1) `WORKERS` defaulted to 16, twice the number of CPUs. Extra workers do not add computing power, they only add scheduling and memory overhead. (2) The workers are started with `&` inside a non-interactive script. In that case bash starts background jobs with SIGINT ignored, so Ctrl-C does not reach them, and the script had no `trap` to stop them. They become orphans and run until they finish.
+- Fix: `WORKERS=${WORKERS:-$(nproc)}`, one worker per CPU. The script now saves the PID of each worker in an array, has a `cleanup` function that kills them, and uses `trap cleanup EXIT`, `trap 'exit 130' INT` and `trap 'exit 143' TERM`, so the workers are stopped whenever the script ends. It also has `set -euo pipefail` and waits for each worker by PID, so a failed worker makes the script fail. Commit dcb4d7a: "Fix task 5: stats.sh uses one worker per CPU and stops its workers on exit".
+- Before and after (your measurements): 
+  - Before (median of my sweep): 16 workers took 8.87 s elapsed with about 64 s of user time.
+  - After: 8 workers (= `nproc`) take 7.72 s elapsed with about 55 s of user time, so it is faster and uses less CPU time.
+  - Ctrl-C test of the fixed script (with `WORKERS=2`, so that the run lasts about 17 s and I could interrupt it): exit status 130 and no `stats_worker.py` process left in `ps`. With the original script the same test left 14 orphans with PPID 1.
+  - `python3 tools/check.py` shows PASS for `stats.csv` (72 rows).
+  - Note: some later runs on my laptop took 21 to 26 s. I ran the original script at 8 workers in the same session and it also took 21.05 s (148.48 s user), so that slowdown came from my laptop at that moment (probably thermal throttling) and not from the fix. For the comparison I use the sweep medians, which were measured under the same conditions.
 
 ## The worker experiment
 
@@ -81,3 +89,4 @@ used in this assignment."
 
 
 - Task 3 (MasihGhadbeygi): I used Claude (Anthropic) to guide me through the lab setup and the Task 3 diagnosis, to explain the strace and time outputs, and to write the fixed version of steps/audit.py (open the file once before the loop). Prompts were along the lines of 'walk me through Task 3 of Lab 1 step by step'. I ran all the commands and measurements myself on my laptop, and I checked the fix with tools/check.py, having a complete understanding of the Task. 
+- Warm-up, Task 2 and Task 5 (agendraieu2024): I used Claude (Anthropic) as a tutor and assistant. It explained the outputs of `time`, `strace`, `ps` and `PIPESTATUS` to me, helped me with the diagnosis, helped me write and check the code of the fixed steps/extracts.sh and steps/stats.sh (the code is marked with a GenAI comment), and helped me write up these three sections of REPORT.md. Prompts were along the lines of 'help me fix Task 2 of Lab 1, extracts.sh writes empty files' and 'help me fix Task 5 of Lab 1, stats.sh uses too many workers and leaves them running after Ctrl-C'. I ran all the commands and measurements myself on my laptop, decided which fixes to apply after understanding each fault, tested them with tools/check.py and with the failure and Ctrl-C tests described above, and reviewed the text of the report.
